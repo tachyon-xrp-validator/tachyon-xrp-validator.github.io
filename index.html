@@ -54,7 +54,7 @@
             background: var(--card-bg);
             backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border); border-radius: 24px;
-            width: 100%; max-width: 780px; 
+            width: 100%; max-width: 850px; /* Slightly wider to fit 4 cols */
             padding: 30px;
             box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05), 0 20px 50px rgba(0,0,0, 0.8), 0 0 30px rgba(0, 170, 228, 0.1);
             animation: fadeIn 0.8s ease-out; position: relative; z-index: 10;
@@ -104,9 +104,9 @@
             gap: 12px; margin-bottom: 12px; 
         }
 
-        /* Bottom Row Grid (Custom layout: Wide Left) */
+        /* Bottom Row Grid (Updated to 4 columns) */
         .grid-bottom {
-            display: grid; grid-template-columns: 2fr 1fr 1fr;
+            display: grid; grid-template-columns: repeat(4, 1fr);
             gap: 12px; margin-bottom: 25px;
         }
 
@@ -130,8 +130,7 @@
             overflow: hidden; text-overflow: ellipsis;
         }
         .card-value.mono { font-family: 'JetBrains Mono', monospace; letter-spacing: -0.5px; }
-        .card-value.xl { font-size: 1.2rem; } 
-
+        
         /* --- DOMAIN TICKER --- */
         .ticker-wrap {
             width: 100%; overflow: hidden; white-space: nowrap; position: relative;
@@ -255,15 +254,19 @@
         <div class="grid-bottom">
             <div class="card">
                 <span class="card-label">Ledger Index</span>
-                <div class="card-value mono xl loading-pulse" id="ledger-index">Initializing...</div>
+                <div class="card-value mono loading-pulse" id="ledger-index">Initializing...</div>
+            </div>
+            <div class="card">
+                <span class="card-label">Base Fee</span>
+                <div class="card-value loading-pulse" id="base-fee">Loading...</div>
             </div>
             <div class="card">
                 <span class="card-label">Base Reserve</span>
                 <div class="card-value loading-pulse" id="base-reserve">Loading...</div>
             </div>
             <div class="card">
-                <span class="card-label">Fee Vote</span>
-                <div class="card-value loading-pulse" id="fee-vote">Loading...</div>
+                <span class="card-label">Owner Reserve</span>
+                <div class="card-value loading-pulse" id="reserve-inc">Loading...</div>
             </div>
         </div>
 
@@ -299,7 +302,8 @@
             const refreshBtn = document.querySelector('.refresh-btn');
             refreshBtn.innerHTML = 'LOADING...';
             
-            const idsToReset = ['agreement-1h', 'agreement-24h', 'missed-blocks', 'server-version', 'verified-domain', 'base-reserve', 'ledger-index', 'fee-vote', 'unl-status'];
+            // Updated list of IDs to reset
+            const idsToReset = ['agreement-1h', 'agreement-24h', 'missed-blocks', 'server-version', 'verified-domain', 'base-reserve', 'ledger-index', 'base-fee', 'reserve-inc', 'unl-status'];
             idsToReset.forEach(id => {
                 const el = document.getElementById(id);
                 el.innerText = '...';
@@ -307,7 +311,6 @@
             });
 
             try {
-                // cache: 'no-store' forces browser to fetch fresh data
                 const response = await fetch(API_URL, { cache: "no-store" });
                 if (!response.ok) throw new Error('Validator not found');
                 
@@ -379,22 +382,36 @@
                 }
                 ledgerEl.classList.remove('loading-pulse');
 
-                // Base Reserve
+                // --- NEW FIELDS ---
+
+                // Base Fee (drops)
+                const feeEl = document.getElementById('base-fee');
+                if (data.base_fee) {
+                    feeEl.innerText = data.base_fee + ' drops';
+                } else {
+                    feeEl.innerText = 'N/A';
+                }
+                feeEl.classList.remove('loading-pulse');
+
+                // Base Reserve (Converted from drops to XRP)
                 const reserveEl = document.getElementById('base-reserve');
                 if (data.reserve_base) {
                     const xrpValue = parseInt(data.reserve_base) / 1000000;
                     reserveEl.innerText = xrpValue + ' XRP';
-                } else reserveEl.innerText = '1 XRP';
+                } else {
+                    reserveEl.innerText = 'N/A';
+                }
                 reserveEl.classList.remove('loading-pulse');
 
-                // Fee Vote
-                const feeEl = document.getElementById('fee-vote');
-                if (data.base_fee) {
-                    feeEl.innerText = data.base_fee + ' drops';
+                // Owner Reserve (Converted from drops to XRP)
+                const incEl = document.getElementById('reserve-inc');
+                if (data.reserve_inc) {
+                    const xrpValue = parseInt(data.reserve_inc) / 1000000;
+                    incEl.innerText = xrpValue + ' XRP';
                 } else {
-                    feeEl.innerText = '10 drops';
+                    incEl.innerText = 'N/A';
                 }
-                feeEl.classList.remove('loading-pulse');
+                incEl.classList.remove('loading-pulse');
 
                 // Status Pill
                 const statusPill = document.getElementById('node-status');
